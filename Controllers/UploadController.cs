@@ -42,14 +42,14 @@ public class UploadController: ControllerBase{
         user.Uploads.Add(upload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
-        return Ok("https://"+GetIpAddress()+"/upload/downloadFile/"+HttpUtility.UrlEncode(uniqueFilePath));
+        return Ok("https://"+GetIpAddress()+"/upload/downloadFile/"+HttpUtility.UrlEncode(str: uniqueFilePath));
     }
     [HttpPost(template: "uploadText")]
     public IActionResult Post([FromForm] string content, int userId, bool deleteAfterDownload=false){
         if(content==null) return BadRequest("Content is empty");
-        if(userId==null) return BadRequest("User is not logged in");
         if(!UserController.LoggedUser.Contains(userId)) return BadRequest("User is not logged in");
         var user=_context.RegularUsers.FirstOrDefault(u => u.Id==userId);
+        if(user==null) return BadRequest("User does not exist");
         var uniqueFileName=Path.GetRandomFileName()+ ".txt";
         var uniqueFilePath=Path.Combine("/mnt/e/Coding/Saritasa/Uploads",uniqueFileName);
         if(!Directory.Exists("/mnt/e/Coding/Saritasa/Uploads")){
@@ -66,7 +66,7 @@ public class UploadController: ControllerBase{
         user.Uploads.Add(upload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
-        return Ok("https://"+GetIpAddress()+"/upload/downloadText/filePath="+uniqueFilePath);
+        return Ok("https://"+GetIpAddress()+"/upload/downloadFile/"+HttpUtility.UrlEncode(str: uniqueFilePath));
     }
     [HttpGet("downloadFile/{filePath}")]
     public IActionResult DownloadFile(string filePath){
@@ -75,21 +75,26 @@ public class UploadController: ControllerBase{
         if(!System.IO.File.Exists(filePath)) return BadRequest("File does not exist");
         var fileBytes=System.IO.File.ReadAllBytes(filePath);
         var fileName=Path.GetFileName(filePath);
-        if(_context.Uploads.FirstOrDefault(u => u.FilePath==filePath).DeleteAfterDownload){
+        var fileObject=_context.Uploads.FirstOrDefault(u => u.FilePath==filePath);
+        if(fileObject==null) return BadRequest("File does not exist in database");
+        if(fileObject.DeleteAfterDownload){
             System.IO.File.Delete(filePath);
-            _context.Uploads.Remove(_context.Uploads.FirstOrDefault(u => u.FilePath==filePath));
-            _context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(_context.Uploads.FirstOrDefault(u => u.FilePath==filePath))).Uploads.Remove(_context.Uploads.FirstOrDefault(u => u.FilePath==filePath));
+            _context.Uploads.Remove(fileObject);
+            var userObject=_context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(fileObject));
+            userObject.Uploads.Remove(fileObject);
             _context.SaveChanges();
         }
         return File(fileBytes, "application/force-download", fileName);
     }
-    [HttpGet("downloadText")]
+    [HttpGet("downloadText/{filePath}")]
     public IActionResult DownloadText(string filePath){
+        filePath=HttpUtility.UrlDecode(filePath);
         if(filePath==null) return BadRequest("File path is empty");
         if(!System.IO.File.Exists(filePath)) return BadRequest("File does not exist");
         var fileBytes=System.IO.File.ReadAllBytes(filePath);
         var fileName=Path.GetFileName(filePath);
         var fileObject=_context.Uploads.FirstOrDefault(u => u.FilePath==filePath);
+        if(fileObject==null) return BadRequest("File does not exist in database");
         if(fileObject.DeleteAfterDownload){
             System.IO.File.Delete(filePath);
             _context.Uploads.Remove(fileObject);
@@ -100,8 +105,9 @@ public class UploadController: ControllerBase{
     }
     [HttpPost("getUploads")]
     public IActionResult Get(int id){
-        if(id==null) return BadRequest("User is not logged in");
+        if(!UserController.LoggedUser.Contains(id)) return BadRequest("User is not logged in");
         var user=_context.RegularUsers.Include(u=> u.Uploads).FirstOrDefault(u => u.Id==id);
+        if(user==null) return BadRequest("User does not exist");
         return Ok(user.Uploads);
     }
     [HttpPost("deleteAll")]
@@ -122,10 +128,14 @@ public class UploadController: ControllerBase{
     }
     [HttpPost("deleteFile")]
     public IActionResult DeleteFile([FromForm] string filePath, int userId){
+        filePath=filePath.Split('/')[filePath.Split('/').Length-1];
+        filePath=HttpUtility.UrlDecode(filePath);
         if(filePath==null) return BadRequest("File path is empty");
         if(!System.IO.File.Exists(filePath)) return BadRequest("File does not exist");
         var fileObject=_context.Uploads.FirstOrDefault(u => u.FilePath==filePath);
+        if(fileObject==null) return BadRequest("File does not exist in database");
         var user=_context.RegularUsers.Include(u => u.Uploads).FirstOrDefault(u => u.Id==userId);
+        if(user==null) return BadRequest("User does not exist");
         if(user.Uploads.Contains(fileObject)){
             System.IO.File.Delete(filePath);
             _context.Uploads.Remove(fileObject);
