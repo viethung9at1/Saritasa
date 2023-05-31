@@ -11,6 +11,7 @@ public class RegularUser : User{
     public string Password { get; set; }
     [Key]
     public int? Id { get; set; }=null;
+    public List<Upload> Uploads { get; set; } =new List<Upload>();
 }
 public class AnonymousUser : User{
 

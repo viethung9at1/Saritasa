@@ -29,6 +29,7 @@ public class UserController : ControllerBase
         _context.SaveChanges();
         return Ok();
     }
+    [HttpPost("logout")]
     public IActionResult Logout([FromForm] RegularUser user)
     {
         LoggedUser.Remove(user);
