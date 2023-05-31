@@ -5,7 +5,7 @@ namespace Saritasa.Controllers;
 public class UserController : ControllerBase
 {
     private readonly UserDataContext _context;
-    public static List<User> LoggedUser = new List<User>();
+    public static HashSet<int?> LoggedUser = new HashSet<int?>();
     public UserController(UserDataContext context)
     {
         _context = context;
@@ -16,12 +16,13 @@ public class UserController : ControllerBase
         var dbUser = _context.RegularUsers.FirstOrDefault(u => u.Email == user.Email && u.Password == user.Password);
         if (dbUser == null)
             return BadRequest("Wrong username or password");
-        LoggedUser.Add(dbUser);
+        LoggedUser.Add(dbUser.Id);
         return Ok();
     }
     [HttpPost("register")]
     public IActionResult Register([FromForm] RegularUser user)
     {
+        _context.Database.EnsureCreated();
         var dbUser = _context.RegularUsers.FirstOrDefault(u => u.Email == user.Email);
         if (dbUser != null)
             return BadRequest("User with this email already exists");
@@ -32,7 +33,7 @@ public class UserController : ControllerBase
     [HttpPost("logout")]
     public IActionResult Logout([FromForm] RegularUser user)
     {
-        LoggedUser.Remove(user);
+        LoggedUser.Remove(user.Id);
         return Ok();
     }
 }
