@@ -1,6 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Web;
+
 namespace Saritasa.Controllers;
 [ApiController]
 [Route("[controller]")]
@@ -8,6 +11,13 @@ public class UploadController: ControllerBase{
     private readonly UserDataContext _context;
     public UploadController(UserDataContext context){
         _context=context;
+    }
+    [HttpGet]
+    public string GetIpAddress(){
+        IPHostEntry ipHostInfo=Dns.GetHostEntry(Dns.GetHostName());
+        IPAddress ipAddress=ipHostInfo.AddressList[0];
+        int port=HttpContext.Connection.LocalPort;
+        return "localhost"+":"+port;
     }
     [HttpPost(template: "uploadFile")]
     public IActionResult Post(IFormFile file, int id, bool deleteAfterDownload=false){
@@ -32,7 +42,7 @@ public class UploadController: ControllerBase{
         user.Uploads.Add(upload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
-        return Ok(uniqueFilePath);
+        return Ok("https://"+GetIpAddress()+"/upload/downloadFile/"+HttpUtility.UrlEncode(uniqueFilePath));
     }
     [HttpPost(template: "uploadText")]
     public IActionResult Post([FromForm] string content, int userId, bool deleteAfterDownload=false){
@@ -56,10 +66,11 @@ public class UploadController: ControllerBase{
         user.Uploads.Add(upload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
-        return Ok(uniqueFilePath);
+        return Ok("https://"+GetIpAddress()+"/upload/downloadText/filePath="+uniqueFilePath);
     }
-    [HttpPost("downloadFile")]
-    public IActionResult Download([FromForm] string filePath){
+    [HttpGet("downloadFile/{filePath}")]
+    public IActionResult DownloadFile(string filePath){
+        filePath=HttpUtility.UrlDecode(filePath);
         if(filePath==null) return BadRequest("File path is empty");
         if(!System.IO.File.Exists(filePath)) return BadRequest("File does not exist");
         var fileBytes=System.IO.File.ReadAllBytes(filePath);
@@ -72,8 +83,8 @@ public class UploadController: ControllerBase{
         }
         return File(fileBytes, "application/force-download", fileName);
     }
-    [HttpPost("downloadText")]
-    public IActionResult DownloadText([FromForm] string filePath){
+    [HttpGet("downloadText")]
+    public IActionResult DownloadText(string filePath){
         if(filePath==null) return BadRequest("File path is empty");
         if(!System.IO.File.Exists(filePath)) return BadRequest("File does not exist");
         var fileBytes=System.IO.File.ReadAllBytes(filePath);
