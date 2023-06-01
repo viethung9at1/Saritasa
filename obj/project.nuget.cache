@@ -1,9 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "4+GJSgAelD8EUknJYqlNDXn5IVTHwsBgisunAdlS61v70yOX11FhnF1FbS40YI6xCiw+UQVHq/9RA1+zRLsksQ==",
+  "dgSpecHash": "YJTEFqIW59Vut59ClwltzMR7EMd7PYECppRh5IMcvgcefFF4kOwusZQVc3aNRvCGiHbackdarZgkVdtHtQs0ZQ==",
   "success": true,
   "projectFilePath": "/mnt/e/Coding/Saritasa/Saritasa.csproj",
   "expectedPackageFiles": [
+    "/home/hung/.nuget/packages/awssdk.core/3.7.106.44/awssdk.core.3.7.106.44.nupkg.sha512",
+    "/home/hung/.nuget/packages/awssdk.extensions.netcore.setup/3.7.7/awssdk.extensions.netcore.setup.3.7.7.nupkg.sha512",
+    "/home/hung/.nuget/packages/awssdk.s3/3.7.104.24/awssdk.s3.3.7.104.24.nupkg.sha512",
     "/home/hung/.nuget/packages/azure.core/1.24.0/azure.core.1.24.0.nupkg.sha512",
     "/home/hung/.nuget/packages/azure.identity/1.6.0/azure.identity.1.6.0.nupkg.sha512",
     "/home/hung/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
