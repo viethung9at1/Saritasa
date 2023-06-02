@@ -23,14 +23,15 @@ public class UploadController: ControllerBase{
         IPHostEntry ipHostInfo=Dns.GetHostEntry(Dns.GetHostName());
         IPAddress ipAddress=ipHostInfo.AddressList[0];
         int port=HttpContext.Connection.LocalPort;
-        return "localhost"+":"+port;
+        return ipAddress+":"+port;
     }
     [HttpPost(template: "uploadFile")]
     public IActionResult Post(IFormFile file, int id, bool deleteAfterDownload=false){
         if(file.Length==0) return BadRequest("File is empty");
-        if(id==null) return BadRequest("User is not logged in");
         if(!UserController.LoggedUser.Contains(id)) return BadRequest("User is not logged in");
-        var user=_context.RegularUsers.Include(u => u.Uploads).FirstOrDefault(u => u.Id==id);
+        var user=_context.RegularUsers.FirstOrDefault(u => u.Id==id);
+        if(user==null) return BadRequest("User does not exist");
+        _context.Entry(user).Collection(u => u.Uploads).Load();
         var originalFileName = Path.GetFileName(file.FileName);
         var uniqueFileName=Path.GetRandomFileName()+ "."+file.FileName.Split('.')[1];
         var uniqueFilePath=Path.Combine("/mnt/e/Coding/Saritasa/Uploads",uniqueFileName);
@@ -55,6 +56,8 @@ public class UploadController: ControllerBase{
         if(content==null) return BadRequest("Content is empty");
         if(!UserController.LoggedUser.Contains(userId)) return BadRequest("User is not logged in");
         var user=_context.RegularUsers.FirstOrDefault(u => u.Id==userId);
+        if(user==null) return BadRequest("User does not exist");
+        _context.Entry(user).Collection(u => u.Uploads).Load();
         if(user==null) return BadRequest("User does not exist");
         var uniqueFileName=Path.GetRandomFileName()+ ".txt";
         var uniqueFilePath=Path.Combine("/mnt/e/Coding/Saritasa/Uploads",uniqueFileName);
@@ -112,7 +115,8 @@ public class UploadController: ControllerBase{
     [HttpGet("getUploads")]
     public IActionResult Get(int id){
         if(!UserController.LoggedUser.Contains(id)) return BadRequest("User is not logged in");
-        var user=_context.RegularUsers.Include(u=> u.Uploads).FirstOrDefault(u => u.Id==id);
+        var user=_context.RegularUsers.FirstOrDefault(u => u.Id==id);
+        _context.Entry(user).Collection(u => u.Uploads).Load();
         if(user==null) return BadRequest("User does not exist");
         return Ok(user.Uploads);
     }
@@ -160,8 +164,9 @@ public class UploadController: ControllerBase{
         if(!bucketExists) await _s3Client.PutBucketAsync("saritasainterview");
         if(file.Length==0) return BadRequest("File is empty");
         if(!UserController.LoggedUser.Contains(userId)) return BadRequest("User is not logged in");
-        var user=_context.RegularUsers.Include(u => u.Uploads).FirstOrDefault(u => u.Id==userId);
+        var user=_context.RegularUsers.FirstOrDefault(u => u.Id==userId);
         if(user==null) return BadRequest("User does not exist");
+        _context.Entry(user).Collection(u => u.Uploads).Load();
         var originalFileName = Path.GetFileName(file.FileName);
         var uniqueFileName=Path.GetRandomFileName()+ "."+file.FileName.Split('.')[1];
         Upload newUpload=new Upload(){
@@ -188,8 +193,9 @@ public class UploadController: ControllerBase{
         if(!bucketExists) await _s3Client.PutBucketAsync("saritasainterview");
         if(content==null) return BadRequest("Content is empty");
         if(!UserController.LoggedUser.Contains(userId)) return BadRequest("User is not logged in");
-        var user=_context.RegularUsers.Include(u => u.Uploads).FirstOrDefault(u => u.Id==userId);
+        var user=_context.RegularUsers.FirstOrDefault(u => u.Id==userId);
         if(user==null) return BadRequest("User does not exist");
+        _context.Entry(user).Collection(u => u.Uploads).Load();
         var uniqueFileName=Path.GetRandomFileName()+ ".txt";
         Upload newUpload=new Upload(){
             FilePath=uniqueFileName,
