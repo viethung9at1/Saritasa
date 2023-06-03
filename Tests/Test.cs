@@ -15,6 +15,7 @@ public class Test
     private readonly UploadController _uploadController;
     private readonly AmazonS3Client _s3Client;
     private readonly UserDataContext _context;
+    //Test register function
     [Fact]
     public void TestRegister()
     {
@@ -28,6 +29,7 @@ public class Test
         Assert.NotNull(okResult);
         Assert.Equal(200, okResult.StatusCode);
     }
+    //Check login function
     [Fact]
     public void TestLogin()
     {
@@ -41,6 +43,7 @@ public class Test
         Assert.NotNull(okResult);
         Assert.Equal(200, okResult.StatusCode);
     }
+    //Check logout function
     [Fact]
     public void TestLogout(){
         TestLogin();
@@ -54,6 +57,7 @@ public class Test
         Assert.NotNull(okResult);
         Assert.Equal(200, okResult.StatusCode);
     }
+    //Test upload function with userID=1
     [Fact]
     public async void TestUpload(){
         TestLogin();
@@ -69,6 +73,7 @@ public class Test
         var s3Object=await _s3Client.GetObjectAsync("saritasahung",fileUploadName);
         Assert.NotNull(s3Object);
     }
+    //Check download function
     [Fact]
     public async void TestDownload(){
         TestLogin();
@@ -86,6 +91,7 @@ public class Test
         var okDownloadResult=downloadResult as FileStreamResult;
         Assert.NotNull(okDownloadResult);
     }
+    //Test delete function
     [Fact]
     public async void TestDelete(){
         TestLogin();
@@ -103,6 +109,7 @@ public class Test
         var okDeleteResult=deleteResult as OkResult;
         Assert.NotNull(okDeleteResult);
     }   
+    //Test get list of file function
     [Fact]
     public void TestGetListFile(){
         TestLogin();
@@ -111,6 +118,7 @@ public class Test
         var okResult=result as OkObjectResult;
         Assert.NotNull(okResult);
     }
+    //Test download file that will be deleted after download
     [Fact]
     public async void TestDownloadAndDelete(){
         TestLogin();
@@ -134,6 +142,7 @@ public class Test
         }
         Assert.True(check);
     }
+    //Test upload text
     [Fact]
     public async void TestStringUpload(){
         TestLogin();
@@ -149,6 +158,7 @@ public class Test
         }
         Assert.True(check);
     }
+    //Test text download
     [Fact]
     public async void TestStringDownload(){
         TestLogin();
@@ -159,6 +169,7 @@ public class Test
         var okDownloadResult=downloadResult as OkObjectResult;
         Assert.Equal(testString, okDownloadResult.Value.ToString());
     }
+    //Text text that will be deleted after download
     [Fact]
     public async void TestStringDownloadThenDelete(){
         TestLogin();
@@ -176,8 +187,10 @@ public class Test
         }
         Assert.True(check);
     }
+    //Constructor
     public Test()
     {
+        //SQL Server connection string
         var connectionString = "Server=localhost;Database=Saritasa;User Id=sa;Password=Hung_9at1;TrustServerCertificate=True;";
         var options = new DbContextOptionsBuilder<Saritasa.UserDataContext>().UseSqlServer(connectionString).Options;
         var context = new Saritasa.UserDataContext(options);

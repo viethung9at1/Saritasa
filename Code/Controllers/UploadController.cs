@@ -28,25 +28,34 @@ public class UploadController: ControllerBase{
     //Upload file to file system (local machine)
     [HttpPost(template: "uploadFile")]
     public IActionResult Post(IFormFile file, int id, bool deleteAfterDownload=false){
+        //Check if file is empty
         if(file.Length==0) return BadRequest("File is empty");
+        //Check if user is logged in
         if(!UserController.LoggedUser.Contains(id)) return BadRequest("User is not logged in");
+        //Check if user exists
         var user=_context.RegularUsers.FirstOrDefault(u => u.Id==id);
         if(user==null) return BadRequest("User does not exist");
+        //Load user uploads
         _context.Entry(user).Collection(u => u.Uploads).Load();
+        //Get and generate file name
         var originalFileName = Path.GetFileName(file.FileName);
         var uniqueFileName=Path.GetRandomFileName()+ "."+file.FileName.Split('.')[1];
         var uniqueFilePath=Path.Combine("/mnt/e/Coding/Saritasa/Uploads",uniqueFileName);
+        //Create directory if it does not exist
         if(!Directory.Exists("/mnt/e/Coding/Saritasa/Uploads")){
             Directory.CreateDirectory("/mnt/e/Coding/Saritasa/Uploads");
         }
+        //Create file
         using (var stream=System.IO.File.Create(uniqueFilePath)){
             file.CopyTo(stream);
         }
+        //Create upload object
         Saritasa.Upload upload=new Saritasa.Upload{
             FilePath=uniqueFilePath,
             DeleteAfterDownload=deleteAfterDownload,
             Type=Saritasa.UploadType.File
         };
+        //Add upload object to user
         user.Uploads.Add(upload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
@@ -111,7 +120,8 @@ public class UploadController: ControllerBase{
         if(fileObject.DeleteAfterDownload){
             System.IO.File.Delete(filePath);
             _context.Uploads.Remove(fileObject);
-            _context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(fileObject)).Uploads.Remove(fileObject);
+            if(_context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(fileObject))!=null)
+                _context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(fileObject)).Uploads.Remove(fileObject);
             _context.SaveChanges();
         }
         return File(fileBytes, "application/force-download", fileName);
@@ -119,9 +129,12 @@ public class UploadController: ControllerBase{
     //Get list of upload objects (from all sources)
     [HttpGet("getUploads")]
     public IActionResult Get(int id){
+        //Check if user is logged in
         if(!UserController.LoggedUser.Contains(id)) return BadRequest("User is not logged in");
         var user=_context.RegularUsers.FirstOrDefault(u => u.Id==id);
+        //Load user uploads
         _context.Entry(user).Collection(u => u.Uploads).Load();
+        //Check if user exists
         if(user==null) return BadRequest("User does not exist");
         return Ok(user.Uploads);
     }
@@ -169,30 +182,40 @@ public class UploadController: ControllerBase{
     //Upload file to S3 bucket
     [HttpPost("uploadFileToS3")]
     public async Task<IActionResult> UploadFileToS3(IFormFile file, int userId, bool deleteAfterDownload=false, bool testMode=false){
+        //Create new bucket if it not exists
         var bucketExists=await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, "saritasahung");
         if(!bucketExists) await _s3Client.PutBucketAsync("saritasahung");
+        //Check if file is empty
         if(file.Length==0) return BadRequest("File is empty");
+        //Check if user is logged in
         if(!UserController.LoggedUser.Contains(userId)) return BadRequest("User is not logged in");
+        //Check if user exists
         var user=_context.RegularUsers.FirstOrDefault(u => u.Id==userId);
         if(user==null) return BadRequest("User does not exist");
+        //Load user uploads
         _context.Entry(user).Collection(u => u.Uploads).Load();
+        //Get and generate file name
         var originalFileName = Path.GetFileName(file.FileName);
+        //Create upload object
         var uniqueFileName=Path.GetRandomFileName()+ "."+file.FileName.Split('.')[1];
         Upload newUpload=new Upload(){
             FilePath=uniqueFileName,
             DeleteAfterDownload=deleteAfterDownload,
             Type=UploadType.File
         };
+        //Add upload object to user
         user.Uploads.Add(newUpload);
         _context.Uploads.Add(newUpload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
+        //Create request
         var request=new PutObjectRequest(){
             BucketName="saritasahung",
             Key=uniqueFileName,
             InputStream=file.OpenReadStream(),
             ContentType=file.ContentType
         };
+        //Upload file to S3 bucket
         await _s3Client.PutObjectAsync(request);
         if(testMode) return Ok("https://"+GetIpAddress()+"/upload/downloadFromS3/"+HttpUtility.UrlEncode(str: uniqueFileName));
         else return Ok(uniqueFileName);
@@ -200,29 +223,39 @@ public class UploadController: ControllerBase{
     //Upload text to S3 bucket
     [HttpPost("uploadTextToS3")]
     public async Task<IActionResult> UploadTextToS3([FromForm] string content, int userId, bool deleteAfterDownload=false, bool testMode=false){
+        //Create new bucket if it not exists
         var bucketExists=await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, "saritasahung");
         if(!bucketExists) await _s3Client.PutBucketAsync("saritasahung");
+        //Check if content is empty
         if(content==null) return BadRequest("Content is empty");
+        //Check if user is logged in
         if(!UserController.LoggedUser.Contains(userId)) return BadRequest("User is not logged in");
         var user=_context.RegularUsers.FirstOrDefault(u => u.Id==userId);
+        //Check if user exists
         if(user==null) return BadRequest("User does not exist");
+        //Load user uploads
         _context.Entry(user).Collection(u => u.Uploads).Load();
+        //Get and generate file name
         var uniqueFileName=Path.GetRandomFileName()+ ".txt";
+        //Create upload object
         Upload newUpload=new Upload(){
             FilePath=uniqueFileName,
             DeleteAfterDownload=deleteAfterDownload,
             Type=UploadType.Text
         };
+        //Add upload object to user
         user.Uploads.Add(newUpload);
         _context.Uploads.Add(newUpload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
+        //Create request
         var request=new PutObjectRequest(){
             BucketName="saritasahung",
             Key=uniqueFileName,
             InputStream=new MemoryStream(Encoding.ASCII.GetBytes(content)),
             ContentType="text/plain"
         };
+        //Upload file to S3 bucket
         await _s3Client.PutObjectAsync(request);
         if(testMode) return Ok("https://"+GetIpAddress()+"/upload/downloadFromS3/"+HttpUtility.UrlEncode(str: uniqueFileName));
         else return Ok(uniqueFileName); 
@@ -230,30 +263,44 @@ public class UploadController: ControllerBase{
     //Download file from S3 bucket
     [HttpGet("downloadFromS3/{fileName}")]
     public async Task<IActionResult> DownloadFileFromS3(string fileName){
+        //Check if file name is empty
         if(fileName==null) return BadRequest("File path is empty");
+        //Check if file exists in database
         var fileObject=_context.Uploads.FirstOrDefault(u => u.FilePath==fileName);
         if(fileObject==null) return BadRequest("File does not exist in database");
+        //Check if file exists in S3 bucket
         var s3Object=await _s3Client.GetObjectAsync("saritasahung", fileName);
         if(s3Object==null) return BadRequest("File does not exist in S3 bucket");
+        //Delete file from S3 bucket if DeleteAfterDownload is true
         if(fileObject.DeleteAfterDownload){
+            //Delete file from S3 bucket
             await _s3Client.DeleteObjectAsync("saritasahung", fileName);
+            //Delete file from database
             _context.Uploads.Remove(fileObject);
-            _context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(fileObject)).Uploads.Remove(fileObject);
+            if(_context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(fileObject))!=null)
+                _context.RegularUsers.FirstOrDefault(u => u.Uploads.Contains(fileObject)).Uploads.Remove(fileObject);
             _context.SaveChanges();
         }
+        //Read file from S3 bucket
         StreamReader sr=new StreamReader(s3Object.ResponseStream);
+        //Return string
         string result=sr.ReadToEnd();
         return Ok(result);
     }
     //Get list of upload objects (from all sources)
     [HttpDelete("deleteFromS3")]
     public async Task<IActionResult> DeleteFileInS3(string fileName, int userID){
+        //Check if file name is empty
         if(fileName==null) return BadRequest("File path is empty");
+        //Check if user is logged in
         if(!UserController.LoggedUser.Contains(userID)) return BadRequest("User is not logged in");
+        //Check if file exists in database
         var fileObject=_context.Uploads.FirstOrDefault(u => u.FilePath==fileName);
         if(fileObject==null) return BadRequest("File does not exist in database");
+        //Check if user exists
         var user=_context.RegularUsers.Include(u => u.Uploads).FirstOrDefault(u => u.Id==userID);
         if(user==null) return BadRequest("User does not exist");
+        //Delete file from S3 bucket
         if(user.Uploads.Contains(fileObject)){
             await _s3Client.DeleteObjectAsync("saritasahung", fileName);
             _context.Uploads.Remove(fileObject);
