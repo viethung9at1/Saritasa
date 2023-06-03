@@ -72,7 +72,7 @@ public class Test
     }
     //Test upload function with userID=1
     [Fact]
-    public async void TestUpload(){
+    public async Task TestUpload(){
         //Login first
         TestLogin();
         //Create a file object
@@ -87,7 +87,7 @@ public class Test
         var okResult=result as OkObjectResult;
         string fileUploadName=okResult.Value.ToString();
         var s3Object=await _s3Client.GetObjectAsync("saritasahung",fileUploadName);
-        var list=_context.Uploads.FirstOrDefaultAsync(x=> x.FilePath==fileUploadName);
+        var list=await _context.Uploads.FirstOrDefaultAsync(x=> x.FilePath==fileUploadName);
         Assert.NotNull(list);
         Assert.NotNull(s3Object);
     }
@@ -133,7 +133,7 @@ public class Test
         //Delete the file
         var deleteResult=await _uploadController.DeleteFileInS3(fileUploadName, 1);
         //Check if the file is deleted in local database
-        var list=await _context.Uploads.FirstOrDefaultAsync(x=> x.FilePath==fileUploadName);
+        var list=_context.Uploads.FirstOrDefault(x=> x.FilePath==fileUploadName);
         //Check if the file is deleted on S3
         bool checkOnS3=false;
         try{
@@ -149,13 +149,16 @@ public class Test
     }   
     //Test get list of file function
     [Fact]
-    public void TestGetListFile(){
+    public async void TestGetListFile(){
         //Login first
         TestLogin();
+        Task upload=TestUpload();
+        await upload;
         //Check if the list is returned
         var result=_uploadController.Get(1);
         var okResult=result as OkObjectResult;
-        Assert.NotNull(okResult);
+        var listOk=okResult.Value as List<Upload>;
+        Assert.True(listOk.Count>0);
     }
     //Test download file that will be deleted after download
     [Fact]
