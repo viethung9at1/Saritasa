@@ -44,7 +44,9 @@ public class Test
         };
         //Check if the user is logged in
         var result = _userController.Login(user);
-        var okResult = result as OkResult;
+        var okResult = result as OkObjectResult;
+        Assert.NotNull(okResult);
+        var check=UserController.LoggedUser.Contains((int?)okResult.Value);
         Assert.NotNull(okResult);
         Assert.Equal(200, okResult.StatusCode);
     }

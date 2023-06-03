@@ -22,7 +22,7 @@ public class UserController : ControllerBase
         if (dbUser == null)
             return BadRequest("Wrong username or password");
         LoggedUser.Add(dbUser.Id);
-        return Ok();
+        return Ok(dbUser.Id);
     }
     [HttpPost("register")]
     public IActionResult Register([FromForm] RegularUser user)
