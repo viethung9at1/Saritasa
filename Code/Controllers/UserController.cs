@@ -15,6 +15,9 @@ public class UserController : ControllerBase
     {
         if(user==null)
             return BadRequest("User is null");
+        //Encoding password
+        byte[] b=System.Text.ASCIIEncoding.ASCII.GetBytes(user.Password);
+        user.Password=Convert.ToBase64String(b);
         var dbUser = _context.RegularUsers.FirstOrDefault(u => u.Email == user.Email && u.Password == user.Password);
         if (dbUser == null)
             return BadRequest("Wrong username or password");
@@ -28,6 +31,9 @@ public class UserController : ControllerBase
         var dbUser = _context.RegularUsers.FirstOrDefault(u => u.Email == user.Email);
         if (dbUser != null)
             return BadRequest("User with this email already exists");
+        //Encoding password
+        byte[] b=System.Text.ASCIIEncoding.ASCII.GetBytes(user.Password);
+        user.Password=Convert.ToBase64String(b);
         _context.RegularUsers.Add(user);
         _context.SaveChanges();
         return Ok();

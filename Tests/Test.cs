@@ -45,6 +45,8 @@ public class Test
         //Check if the user is logged in
         var result = _userController.Login(user);
         var okResult = result as OkResult;
+        var check=UserController.LoggedUser.Contains(1);
+        Assert.True(check);
         Assert.NotNull(okResult);
         Assert.Equal(200, okResult.StatusCode);
     }
@@ -57,11 +59,14 @@ public class Test
         RegularUser user = new RegularUser()
         {
             Email = "viethung.9at1@gmail.com",
-            Password = "hung9at1"
+            Password = "hung9at1",
+            Id=1
         };
         //Check if the user is logged out
         var result = _userController.Logout(user);
         var okResult = result as OkResult;
+        var check=UserController.LoggedUser.Contains(user.Id);
+        Assert.False(check);
         Assert.NotNull(okResult);
         Assert.Equal(200, okResult.StatusCode);
     }
