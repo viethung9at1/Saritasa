@@ -155,8 +155,19 @@ public class UploadController: ControllerBase{
     public async Task<IActionResult> DeleteDatabase(){
         _context.Database.EnsureDeleted();
         var isS3Exists=await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, "saritasahung");
-        if(isS3Exists){}
-            //await Amazon.S3.Util.AmazonS3Util.DeleteS3BucketWithObjectsAsync(_s3Client, "saritasahung");
+        if(isS3Exists){
+            ListObjectsRequest listObjectsRequest=new ListObjectsRequest{
+                BucketName="saritasahung"
+            };
+            ListObjectsResponse listObjectsResponse;
+            do{
+                listObjectsResponse=await _s3Client.ListObjectsAsync(listObjectsRequest);
+                foreach(var file in listObjectsResponse.S3Objects){
+                    await _s3Client.DeleteObjectAsync("saritasahung", file.Key);
+                }
+                listObjectsRequest.Marker=listObjectsResponse.NextMarker;
+            }while(listObjectsResponse.IsTruncated);
+        }
         return Ok();
     }
     //Delete file from file system (local machine)
