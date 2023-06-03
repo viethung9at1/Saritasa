@@ -19,7 +19,7 @@ public class File: Upload{
 
 }
 public class Text: Upload{
-
+    public string Content {get; set; }
 }
 public enum UploadType{
     File,

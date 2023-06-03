@@ -8,7 +8,7 @@ using Amazon.S3;
 using System.IO;
 using Microsoft.AspNetCore.Http;
 using Amazon.S3.Model;
-
+using System.Text;
 namespace Saritasa.Tests;
 public class Test
 {
@@ -17,11 +17,12 @@ public class Test
     private readonly AmazonS3Client _s3Client;
     private readonly UserDataContext _context;
     private bool LoggedIn = false;
+    private bool Registered = false;
     //Test register function
     [Fact]
     public void TestRegister()
     {
-        if(!LoggedIn){
+        if(!LoggedIn && !Registered){
             //Create a new user
             RegularUser user = new RegularUser()
             {
@@ -33,13 +34,14 @@ public class Test
             var okResult = result as OkResult;
             Assert.NotNull(okResult);
             Assert.Equal(200, okResult.StatusCode);
-            LoggedIn = true;
+            Registered = true;
         }
     }
     //Check login function
     [Fact]
     public void TestLogin()
     {
+        if(LoggedIn) return;
         TestRegister();
         //Create a user object
         RegularUser user = new RegularUser()
@@ -54,6 +56,7 @@ public class Test
         var check = UserController.LoggedUser.Contains((int?)okResult.Value);
         Assert.NotNull(okResult);
         Assert.Equal(200, okResult.StatusCode);
+        LoggedIn = true;
     }
     //Check logout function
     [Fact]
@@ -78,7 +81,7 @@ public class Test
     }
     //Test upload function with userID=1
     [Fact]
-    public async Task<string> TestUpload()
+    public async Task<string> TestFileUpload()
     {
         //Login first
         TestLogin();
@@ -90,18 +93,18 @@ public class Test
         formFile.Headers = new HeaderDictionary();
         formFile.Headers["Content-Type"] = "image/jpeg";
         //Check if the file is uploaded
-        var result = await _uploadController.UploadFileToS3(formFile, 1);
+        var result = await _uploadController.UploadFileToS3(formFile, 1, false, true);
         var okResult = result as OkObjectResult;
         string fileUploadName = okResult.Value.ToString();
         var s3Object = await _s3Client.GetObjectAsync("saritasahung", fileUploadName);
-        var list = await _context.Uploads.FirstOrDefaultAsync(x => x.FilePath == fileUploadName);
+        var list = await _context.Files.FirstOrDefaultAsync(x => x.FilePath == fileUploadName);
         Assert.NotNull(list);
         Assert.NotNull(s3Object);
         return okResult.Value.ToString();
     }
     //Check download function
     [Fact]
-    public async void TestDownload()
+    public async void TestFileDownload()
     {
         //Login first
         TestLogin();
@@ -113,7 +116,7 @@ public class Test
         formFile.Headers = new HeaderDictionary();
         formFile.Headers["Content-Type"] = "image/jpeg";
         //Check if the file is uploaded
-        var result = await _uploadController.UploadFileToS3(formFile, 1);
+        var result = await _uploadController.UploadFileToS3(formFile, 1, false, true);
         var okResult = result as OkObjectResult;
         string fileUploadName = okResult.Value.ToString();
         var s3Object = await _s3Client.GetObjectAsync("saritasahung", fileUploadName);
@@ -123,7 +126,7 @@ public class Test
     }
     //Test delete function
     [Fact]
-    public async void TestDelete()
+    public async void TestFileDelete()
     {
         //Login first
         TestLogin();
@@ -135,7 +138,7 @@ public class Test
         formFile.Headers = new HeaderDictionary();
         formFile.Headers["Content-Type"] = "image/jpeg";
         //Check if the file is uploaded
-        var result = await _uploadController.UploadFileToS3(formFile, 1);
+        var result = await _uploadController.UploadFileToS3(formFile, 1, false, true);
         var okResult = result as OkObjectResult;
         string fileUploadName = okResult.Value.ToString();
         //Check if the file is on S3
@@ -143,7 +146,7 @@ public class Test
         //Delete the file
         var deleteResult = await _uploadController.DeleteFileInS3(fileUploadName, 1);
         //Check if the file is deleted in local database
-        var list = _context.Uploads.FirstOrDefault(x => x.FilePath == fileUploadName);
+        var list = _context.Files.FirstOrDefault(x => x.FilePath == fileUploadName);
         //Check if the file is deleted on S3
         bool checkOnS3 = false;
         try
@@ -161,13 +164,19 @@ public class Test
     }
     //Test get list of file function
     [Fact]
-    public async void TestGetListFile()
+    public async void TestGetListFileText()
     {
         TestLogin();
         List<string> listFileName = new List<string>();
         for(int i=0;i<3;i++){
-            Task<string> task = TestUpload();
+            Task<string> task = TestFileUpload();
             listFileName.Add(await task);
+        }
+        for(int i=0;i<3;i++){
+            string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
+            var res = _uploadController.UploadTextToLocal(content, 1, false, true);
+            var okRes = res as OkObjectResult;
+            listFileName.Add(okRes.Value.ToString());
         }
         //Check if the list is returned
         var result = _uploadController.Get(1);
@@ -177,7 +186,7 @@ public class Test
     }
     //Test download file that will be deleted after download
     [Fact]
-    public async void TestDownloadAndDelete()
+    public async void TestFileDownloadAndDelete()
     {
         //Login first
         TestLogin();
@@ -189,7 +198,7 @@ public class Test
         //Upload file
         formFile.Headers = new HeaderDictionary();
         formFile.Headers["Content-Type"] = "image/jpeg";
-        var result = await _uploadController.UploadFileToS3(formFile, 1, true);
+        var result = await _uploadController.UploadFileToS3(formFile, 1, true, true);
         var okResult = result as OkObjectResult;
         string fileUploadName = okResult.Value.ToString();
         var s3Object = await _s3Client.GetObjectAsync("saritasahung", fileUploadName);
@@ -197,7 +206,7 @@ public class Test
         var downloadResult = await _uploadController.DownloadFileFromS3(fileUploadName);
         //Check if the file is deleted
         bool check = false;
-        var checkInList = await _context.Uploads.FirstOrDefaultAsync(x => x.FilePath == fileUploadName);
+        var checkInList = await _context.Files.FirstOrDefaultAsync(x => x.FilePath == fileUploadName);
         Assert.Null(checkInList);
         try
         {
@@ -211,69 +220,53 @@ public class Test
     }
     //Test upload text
     [Fact]
-    public async void TestStringUpload()
+    public string TestStringUpload()
     {
         //Login first
         TestLogin();
-        //Create a text and upload to S3
-        string testString = "This is a test string";
-        var result = await _uploadController.UploadTextToS3(testString, 1);
+        string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
+        //Upload text
+        var result = _uploadController.UploadTextToLocal(content, 1, false, true);
         var okResult = result as OkObjectResult;
-        //Check if the text is uploaded
-        bool check = true;
-        try
-        {
-            await _s3Client.GetObjectAsync("saritasahung", okResult.Value.ToString());
-        }
-        catch
-        {
-            check = false;
-        }
-        var checkInList = await _context.Uploads.FirstOrDefaultAsync(x => x.FilePath == okResult.Value.ToString());
-        Assert.NotNull(checkInList);
-        Assert.True(check);
+        var list =  _context.Texts.FirstOrDefault(x => x.FilePath == okResult.Value.ToString());
+        Assert.NotNull(list);
+        return okResult.Value.ToString();
     }
     //Test text download
     [Fact]
-    public async void TestStringDownload()
+    public void TestStringDownload()
     {
         //Login first
         TestLogin();
-        //Create a text and upload to S3
-        string testString = "This is a test string";
-        var result = await _uploadController.UploadTextToS3(testString, 1, true);
+        string fileName=TestStringUpload();
+        //Download text
+        var result = _uploadController.DownloadText(fileName);
         var okResult = result as OkObjectResult;
-        //Download
-        var downloadResult = await _uploadController.DownloadFileFromS3(okResult.Value.ToString());
-        var okDownloadResult = downloadResult as OkObjectResult;
-        Assert.Equal(testString, okDownloadResult.Value.ToString());
+        string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
+        var downloadContent=_context.Texts.FirstOrDefault(x=>x.FilePath==fileName).Content;
+        var finalDownload=Encoding.UTF8.GetString(Convert.FromBase64String(downloadContent));
+        Assert.Equal(content,finalDownload);
+        Assert.NotNull(okResult);
     }
     //Text text that will be deleted after download
     [Fact]
-    public async void TestStringDownloadThenDelete()
+    public void TestStringDownloadThenDelete()
     {
         //Login first
         TestLogin();
-        //Create a text and upload to S3
-        string testString = "This is a test string";
-        var result = await _uploadController.UploadTextToS3(testString, 1, true);
+        string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
+        //Upload text
+        var result = _uploadController.UploadTextToLocal(content, 1, true, true);
         var okResult = result as OkObjectResult;
-        //Download
-        var downloadResult = await _uploadController.DownloadFileFromS3(okResult.Value.ToString());
+        Assert.NotNull(okResult);
+        string fileName=okResult.Value.ToString();
+        //Download text
+        var downloadResult = _uploadController.DownloadText(fileName);
         var okDownloadResult = downloadResult as OkObjectResult;
+        Assert.NotNull(okDownloadResult);
         //Check if the text is deleted
-        bool check = false;
-        try
-        {
-            await _s3Client.GetObjectAsync("saritasahung", okResult.Value.ToString());
-        }
-        catch
-        {
-            check = true;
-        }
-        var checkInList = await _context.Uploads.FirstOrDefaultAsync(x => x.FilePath == okResult.Value.ToString());
+        var checkInList =  _context.Texts.FirstOrDefault(x => x.FilePath == fileName);
         Assert.Null(checkInList);
-        Assert.True(check);
     }
     //Constructor
     public Test()
@@ -288,6 +281,10 @@ public class Test
         _s3Client = s3Client;
         _context = context;
         deleteDatabase();
+    }
+    ~Test()
+    {
+        TestLogout();
     }
     async void deleteDatabase()
     {
