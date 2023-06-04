@@ -166,7 +166,7 @@ public class Test
         }
         for(int i=0;i<3;i++){
             string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
-            var res = _uploadController.UploadTextToLocal(content, 1, false, true);
+            var res = _uploadController.UploadText(content, 1, false, true);
             var okRes = res as OkObjectResult;
             listFileName.Add(okRes.Value.ToString());
         }
@@ -218,7 +218,7 @@ public class Test
         TestLogin();
         string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
         //Upload text
-        var result = _uploadController.UploadTextToLocal(content, 1, false, true);
+        var result = _uploadController.UploadText(content, 1, false, true);
         var okResult = result as OkObjectResult;
         var list =  _context.Texts.FirstOrDefault(x => x.FilePath == okResult.Value.ToString());
         Assert.NotNull(list);
@@ -248,7 +248,7 @@ public class Test
         TestLogin();
         string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
         //Upload text
-        var result = _uploadController.UploadTextToLocal(content, 1, true, true);
+        var result = _uploadController.UploadText(content, 1, true, true);
         var okResult = result as OkObjectResult;
         Assert.NotNull(okResult);
         string fileName=okResult.Value.ToString();
