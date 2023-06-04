@@ -7,6 +7,7 @@ using Amazon;
 using Amazon.S3;
 using Amazon.S3.Transfer;
 using Amazon.S3.Model;
+using System.Collections;
 
 namespace Saritasa.Controllers;
 [ApiController]
@@ -155,7 +156,7 @@ public class UploadController : ControllerBase
         //Load user uploads
         _context.Entry(user).Collection(u => u.Files).Load();
         _context.Entry(user).Collection(u => u.Texts).Load();
-        List<Upload> uploads = new List<Upload>();
+        ArrayList uploads = new ArrayList();
         uploads.AddRange(user.Files);
         uploads.AddRange(user.Texts);
         return Ok(uploads);
@@ -261,7 +262,8 @@ public class UploadController : ControllerBase
         {
             FilePath = uniqueFileName,
             DeleteAfterDownload = deleteAfterDownload,
-            Type = UploadType.File
+            Type = UploadType.File,
+            OriginalFileName = originalFileName
         };
         //Add upload object to user
         user.Files.Add(newUpload);

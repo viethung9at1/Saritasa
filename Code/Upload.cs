@@ -16,7 +16,7 @@ public class Upload{
     public bool DeleteAfterDownload { get; set; }
 }
 public class File: Upload{
-
+    public string OriginalFileName {get; set; }
 }
 public class Text: Upload{
     public string Content {get; set; }

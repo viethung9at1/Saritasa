@@ -9,6 +9,8 @@ using System.IO;
 using Microsoft.AspNetCore.Http;
 using Amazon.S3.Model;
 using System.Text;
+using System.Collections;
+
 namespace Saritasa.Tests;
 public class Test
 {
@@ -132,6 +134,7 @@ public class Test
         //Check if the file is uploaded
         var result = await _uploadController.UploadFileToS3(formFile, 1, false, true);
         var okResult = result as OkObjectResult;
+        Assert.NotNull(okResult);
         string fileUploadName = okResult.Value.ToString();
         //Check if the file is on S3
         var s3Object = await _s3Client.GetObjectAsync("saritasahung", fileUploadName);
@@ -168,13 +171,20 @@ public class Test
             string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
             var res = _uploadController.UploadText(content, 1, false, true);
             var okRes = res as OkObjectResult;
+            Assert.NotNull(okRes);
             listFileName.Add(okRes.Value.ToString());
         }
         //Check if the list is returned
         var result = _uploadController.Get(1);
         var okResult = result as OkObjectResult;
-        var listOk = okResult.Value as List<Upload>;
-        listOk.Select(x => x.FilePath).ToList().ForEach(x => Assert.Contains(x, listFileName));
+        Assert.NotNull(okResult);
+        var listOk = okResult.Value as ArrayList;
+        Assert.NotNull(listOk);
+        foreach(var item in listOk){
+            var itemUpload=item as Upload;
+            Assert.NotNull(itemUpload);
+            Assert.Contains(itemUpload.FilePath,listFileName);
+        }
     }
     //Test download file that will be deleted after download
     [Fact]
@@ -192,6 +202,7 @@ public class Test
         formFile.Headers["Content-Type"] = "image/jpeg";
         var result = await _uploadController.UploadFileToS3(formFile, 1, true, true);
         var okResult = result as OkObjectResult;
+        Assert.NotNull(okResult);
         string fileUploadName = okResult.Value.ToString();
         var s3Object = await _s3Client.GetObjectAsync("saritasahung", fileUploadName);
         //Download file
@@ -220,6 +231,9 @@ public class Test
         //Upload text
         var result = _uploadController.UploadText(content, 1, false, true);
         var okResult = result as OkObjectResult;
+        //Test
+        Assert.NotNull(okResult);
+        Assert.NotNull(okResult.Value);
         var list =  _context.Texts.FirstOrDefault(x => x.FilePath == okResult.Value.ToString());
         Assert.NotNull(list);
         return okResult.Value.ToString();
@@ -237,6 +251,7 @@ public class Test
         string content="Love you, VN-A873, a Boeing 787-10 Dreamliner";
         var downloadContent=_context.Texts.FirstOrDefault(x=>x.FilePath==fileName).Content;
         var finalDownload=Encoding.UTF8.GetString(Convert.FromBase64String(downloadContent));
+        //Test
         Assert.Equal(content,finalDownload);
         Assert.NotNull(okResult);
     }
