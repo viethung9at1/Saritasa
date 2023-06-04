@@ -231,33 +231,20 @@ public class UploadController : ControllerBase
     [HttpPost("uploadFileToS3")]
     public async Task<IActionResult> UploadFileToS3(IFormFile file, int userId, bool deleteAfterDownload = false, bool testMode = false)
     {
-        //Create new bucket if it not exists
-        var bucketExists = await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, "saritasahung");
-        if (!bucketExists) await _s3Client.PutBucketAsync("saritasahung");
-        //Check if file is empty
         if (file.Length == 0) return BadRequest("File is empty");
-        //Check if user is logged in
+        Task<bool> bucketExistsTask = Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, "saritasahung");
         if (!UserController.LoggedUser.Contains(userId)) return BadRequest("User is not logged in");
-        //Check if user exists
-        var user = _context.RegularUsers.FirstOrDefault(u => u.Id == userId);
-        if (user == null) return BadRequest("User does not exist");
+        Task<RegularUser> userTask = _context.RegularUsers.FirstOrDefaultAsync(u => u.Id == userId);
+        if (!await bucketExistsTask) await _s3Client.PutBucketAsync("saritasahung");
+        var user = await userTask;
+        if(user == null) return BadRequest("User does not exist");
         //Load user uploads
         _context.Entry(user).Collection(u => u.Files).Load();
         //Get and generate file name
         var originalFileName = Path.GetFileName(file.FileName);
         //Create upload object
         var uniqueFileName = Path.GetRandomFileName() + "." + file.FileName.Split('.')[1];
-        Saritasa.File newUpload = new Saritasa.File()
-        {
-            FilePath = uniqueFileName,
-            DeleteAfterDownload = deleteAfterDownload,
-            Type = UploadType.File
-        };
-        //Add upload object to user
-        user.Files.Add(newUpload);
-        _context.Files.Add(newUpload);
-        _context.RegularUsers.Update(user);
-        _context.SaveChanges();
+        
         //Create request
         var request = new PutObjectRequest()
         {
@@ -266,8 +253,19 @@ public class UploadController : ControllerBase
             InputStream = file.OpenReadStream(),
             ContentType = file.ContentType
         };
-        //Upload file to S3 bucket
-        await _s3Client.PutObjectAsync(request);
+        Task uploadTask = _s3Client.PutObjectAsync(request);
+        Saritasa.File newUpload = new Saritasa.File()
+        {
+            FilePath = uniqueFileName,
+            DeleteAfterDownload = deleteAfterDownload,
+            Type = UploadType.File
+        };
+        user.Files.Add(newUpload);
+        _context.Files.Add(newUpload);
+        _context.RegularUsers.Update(user);
+        Task saveTask = _context.SaveChangesAsync();
+        await uploadTask;
+        await saveTask;
         if (!testMode) return Ok("http://" + GetIpAddress() + "/upload/downloadFromS3/" + HttpUtility.UrlEncode(str: uniqueFileName));
         else return Ok(uniqueFileName);
     }
@@ -286,13 +284,13 @@ public class UploadController : ControllerBase
         //Delete file from S3 bucket if DeleteAfterDownload is true
         if (fileObject.DeleteAfterDownload)
         {
-            //Delete file from S3 bucket
-            await _s3Client.DeleteObjectAsync("saritasahung", fileName);
+            Task deleteTask = _s3Client.DeleteObjectAsync("saritasahung", fileName);
             //Delete file from database
             _context.Files.Remove(fileObject);
             if (_context.RegularUsers.FirstOrDefault(u => u.Files.Contains(fileObject)) != null)
                 _context.RegularUsers.FirstOrDefault(u => u.Files.Contains(fileObject)).Files.Remove(fileObject);
             _context.SaveChanges();
+            await deleteTask;
         }
         //Read file from S3 bucket
         StreamReader sr = new StreamReader(s3Object.ResponseStream);
@@ -315,10 +313,11 @@ public class UploadController : ControllerBase
         //Delete file from S3 bucket
         if (user.Files.Contains(fileObject))
         {
-            await _s3Client.DeleteObjectAsync("saritasahung", fileName);
+            Task deleteTask= _s3Client.DeleteObjectAsync("saritasahung", fileName);
             _context.Files.Remove(fileObject);
             user.Files.Remove(fileObject);
             _context.SaveChanges();
+            await deleteTask;
             return Ok();
         }
         else return BadRequest("File does not belong to this user");

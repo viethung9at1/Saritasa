@@ -108,17 +108,9 @@ public class Test
     {
         //Login first
         TestLogin();
-        //Create a file object
-        string filePath = "/mnt/e/Coding/Saritasa/Code/Uploads/Image1.jpg";
-        string fileName = "Image1.jpg";
-        var fileStream = System.IO.File.OpenRead(filePath);
-        var formFile = new FormFile(fileStream, 0, fileStream.Length, null, fileName);
-        formFile.Headers = new HeaderDictionary();
-        formFile.Headers["Content-Type"] = "image/jpeg";
-        //Check if the file is uploaded
-        var result = await _uploadController.UploadFileToS3(formFile, 1, false, true);
-        var okResult = result as OkObjectResult;
-        string fileUploadName = okResult.Value.ToString();
+        var result = await TestFileUpload();
+        var okResult = result;
+        string fileUploadName = okResult;
         var s3Object = await _s3Client.GetObjectAsync("saritasahung", fileUploadName);
         var downloadResult = await _uploadController.DownloadFileFromS3(fileUploadName);
         var okDownloadResult = downloadResult as FileStreamResult;
@@ -281,10 +273,6 @@ public class Test
         _s3Client = s3Client;
         _context = context;
         deleteDatabase();
-    }
-    ~Test()
-    {
-        TestLogout();
     }
     async void deleteDatabase()
     {

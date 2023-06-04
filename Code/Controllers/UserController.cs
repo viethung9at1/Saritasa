@@ -25,8 +25,9 @@ public class UserController : ControllerBase
         return Ok(dbUser.Id);
     }
     [HttpPost("register")]
-    public IActionResult Register([FromForm] RegularUser user)
+    public IActionResult Register([FromForm] RegularUser user, bool testMode=false)
     {
+        if(testMode) _context.Database.EnsureDeleted();
         _context.Database.EnsureCreated();
         var dbUser = _context.RegularUsers.FirstOrDefault(u => u.Email == user.Email);
         if (dbUser != null)
