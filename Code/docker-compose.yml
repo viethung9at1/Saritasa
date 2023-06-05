@@ -4,14 +4,6 @@ version: '3.4'
 networks:
   saritasa:
 services:
-  aws-db:
-    container_name: aws-db-container
-    image: amazon/aws-cli:latest
-    environment:
-      - AWS_ACCESS_KEY_ID=AKIA2VTR55HP5BKPAXML
-      - AWS_ACCESS_KEY_ID=Q/PNgmTlsbazLv3EDBDsWfUllhY4+3mpGFY7MV2r
-      - AWS_DEFAULT_REGION=us-east-1
-    command: configure set aws_access_key_id AKIA2VTR55HP5BKPAXML && configure set aws_secret_access_key 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 && configure set default.region us-east-1
   sql-server:
     container_name: app-db
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -31,12 +23,9 @@ services:
       - 8001:8000
     depends_on:
       - sql-server
-      - aws-db
     environment:
-      - DB_HOST=sql-server-db
+      - DB_HOST=app-db
       - DB_Name=Saritasa
-      - DB_SA_Password=Hung_9at1
-      - AWS_SECRET_ACCESS_KEY_ID=AKIA2VTR55HP5BKPAXML
-      - AWS_SECRET_ACCESS_KEY=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
+      - DB_SA_PASSWORD=Hung_9at1
     networks:
       - saritasa

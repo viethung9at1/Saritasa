@@ -16,18 +16,20 @@ public class UploadController : ControllerBase
 {
     private readonly UserDataContext _context;
     private readonly IAmazonS3 _s3Client;
-    public UploadController(UserDataContext context, IAmazonS3 s3Client)
+    public UploadController(UserDataContext context, IConfiguration configuration)
     {
         _context = context;
-        _s3Client = s3Client;
+        _s3Client=new AmazonS3Client(configuration.GetValue<string>("AWS:AccessKey"), configuration.GetValue<string>("AWS:SecretKey"), RegionEndpoint.USEast1);
     }
     [HttpGet]
     public string GetIpAddress()
     {
-        IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+        /*IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
         IPAddress ipAddress = ipHostInfo.AddressList[0];
         int port = HttpContext.Connection.LocalPort;
-        return "localhost" + ":" + port;
+        return "localhost" + ":" + port;*/
+        string url =HttpContext.Request.Host.Value;
+        return url;
     }
     //Upload file to file system (local machine)
     [HttpPost(template: "uploadFile")]
