@@ -24,10 +24,8 @@ public class UploadController : ControllerBase
     [HttpGet]
     public string GetIpAddress()
     {
-        IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
-        IPAddress ipAddress = ipHostInfo.AddressList[0];
-        int port = HttpContext.Connection.LocalPort;
-        return "localhost" + ":" + port;
+        string url =HttpContext.Request.Host.Value;
+        return url;
     }
     //Upload file to file system (local machine)
     [HttpPost(template: "uploadFile")]
