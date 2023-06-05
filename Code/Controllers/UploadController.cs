@@ -187,7 +187,7 @@ public class UploadController : ControllerBase
     [HttpDelete("deleteDatabase")]
     public async Task<IActionResult> DeleteDatabase()
     {
-        _context.Database.EnsureDeleted();
+        // _context.Database.EnsureDeleted();
         var isS3Exists = await Amazon.S3.Util.AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, "saritasahung");
         if (isS3Exists)
         {
