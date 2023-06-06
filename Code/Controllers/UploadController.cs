@@ -63,6 +63,7 @@ public class UploadController : ControllerBase
         };
         //Add upload object to user
         user.Files.Add(fileUpload);
+        _context.Files.Add(fileUpload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
         return Ok("http://" + GetIpAddress() + "/upload/downloadFile/" + HttpUtility.UrlEncode(str: uniqueFilePath));
@@ -93,6 +94,7 @@ public class UploadController : ControllerBase
         };
         //Add upload object to user
         user.Texts.Add(textUpload);
+        _context.Texts.Add(textUpload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
         if(!testMode) return Ok("http://" + GetIpAddress() + "/upload/downloadText/" + HttpUtility.UrlEncode(str: uniqueFileName));
