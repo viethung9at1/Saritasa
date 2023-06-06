@@ -158,6 +158,7 @@ public class UploadController : ControllerBase
         //Load user uploads
         _context.Entry(user).Collection(u => u.Files).Load();
         _context.Entry(user).Collection(u => u.Texts).Load();
+        user.Texts.ForEach( t=> t.Content = Encoding.UTF8.GetString(Convert.FromBase64String(t.Content)));
         ArrayList uploads = new ArrayList();
         uploads.AddRange(user.Files);
         uploads.AddRange(user.Texts);
