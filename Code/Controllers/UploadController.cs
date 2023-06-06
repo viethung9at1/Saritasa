@@ -97,6 +97,7 @@ public class UploadController : ControllerBase
         };
         //Add upload object to user
         user.Texts.Add(textUpload);
+        _context.Texts.Add(textUpload);
         _context.RegularUsers.Update(user);
         _context.SaveChanges();
         if(!testMode) return Ok("http://" + GetIpAddress() + "/upload/downloadText/" + HttpUtility.UrlEncode(str: uniqueFileName));
